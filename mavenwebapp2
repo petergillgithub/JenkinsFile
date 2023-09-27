@@ -1,0 +1,82 @@
+pipeline{
+    
+agent any 
+
+tools {
+  maven 'Maven3.9.4'
+}
+
+
+
+
+stages{
+        
+    stage('CheckOut'){
+        steps{
+            git 'https://github.com/petergillgithub/maven-web-application.git'
+        }
+    }
+    
+    stage('BuildPackage'){
+        steps{
+            sh "mvn clean package"
+        }
+    }
+    
+    stage('BuildImage'){
+        steps{
+        sh "docker build -t petergillhmg/maven-web-application:${BUILD_NUMBER} ."
+        }
+    }
+    
+    stage('PushImagetoDockerHub'){
+    steps{
+    withCredentials([string(credentialsId: 'b9f844d7-33fc-41d1-8364-c5d820950d4c', variable: 'DOCKER_HUB')]) {
+    sh "docker login -u petergillhmg -p ${DOCKER_HUB}"
+    sh "docker push petergillhmg/maven-web-application:${BUILD_NUMBER}"
+    }
+        }
+    }
+    /*
+    stage('CodequalitySonar'){
+    steps{
+    sh "mvn clean install sonar:sonar"
+    }
+    }
+    
+    
+    stage('SonarQubeDownload'){
+        steps{
+        sh "docker run -d -p 9000:9000 --name sonarqube sonarqube:latest"    
+        }
+    }
+    */
+    
+    /*
+  stage('NexusRepo'){
+    steps{
+    sshagent(['f6b9edd4-7069-4736-bd51-fe8e5c7cba5c']) {
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.41.33"
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.41.33 docker run -d -p 8081:8081 --name nexus sonatype/nexus3"
+    
+    }
+    }
+    }
+    
+    */
+    
+    
+    stage('DeployApplication'){
+    steps{
+    sshagent(['f6b9edd4-7069-4736-bd51-fe8e5c7cba5c']) {
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.19.79"
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.19.79 docker run -d --name mavenwebapp -p 8080:8080 petergillhmg/maven-web-application:${BUILD_NUMBER}"
+}
+    }
+    }
+
+
+        
+        
+    }
+}
