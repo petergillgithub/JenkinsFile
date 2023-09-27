@@ -1,0 +1,65 @@
+pipeline{
+    
+    agent any 
+    
+    environment{
+    // Define your AWS credentials
+    AWS_DEFAULT_REGION = "eu-west-2"
+    AWS_ACCESS_KEY_ID = "AKIARO5LUJE5IUYUTLPM"
+    AWS_SECRET_ACCESS_KEY = "RfjPhZIjHoO6EQ6nfk+IDHJ2NfVIiiYGUwjizORY"
+    ECR_REGISTRY = "100754803002.dkr.ecr.eu-west-2.amazonaws.com"
+    IMAGE_NAME = "maven-web-application"
+
+
+        
+    }
+    
+ tools {
+  maven 'Maven3.9.4'
+}
+
+ stages{
+     
+     stage('CheckOut'){
+         steps{
+             git ' https://github.com/petergillgithub/maven-web-application.git'
+         }
+     }
+     
+     stage('Build'){
+         steps{
+             sh "mvn clean package"
+         }
+     }
+     
+     
+    stage('BuildDockerImage'){
+         steps{
+             sh "docker build -t $ECR_REGISTRY/$IMAGE_NAME:$BUILD_NUMBER ."
+         }
+     }
+    
+    
+    stage('pushtoECR'){
+        steps{
+            //Login to ECR 
+            sh "aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY"
+            
+            
+            // Push the Docker image to ECR
+            
+            sh "docker push $ECR_REGISTRY/$IMAGE_NAME:$BUILD_NUMBER"
+
+        }
+    } 
+     
+     stage('DeploytoEKSCluster'){
+         steps{
+             sh "kubectl get nodes"
+         }
+     }
+     
+     
+ }
+    
+}
